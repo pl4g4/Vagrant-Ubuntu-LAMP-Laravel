@@ -1,3 +1,8 @@
 /bootstrap/compiled.php
 .env.*.php
 .env.php
+.DS_Store
+notes.md
+.vagrant
+play
+.idea
