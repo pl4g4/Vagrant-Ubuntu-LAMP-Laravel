@@ -102,7 +102,7 @@ sudo debconf-set-selections <<< "mysql-server mysql-server/root_password_again p
 # Installing packages
 apt-get install -y mysql-server mysql-client php5-mysql
 
-MYSQL= `which mysql`
+MYSQL='which mysql'
 
 Q1="GRANT ALL ON *.* TO 'root'@'localhost' IDENTIFIED BY '$MYSQLPASSWORD' WITH GRANT OPTION;"
 Q2="FLUSH PRIVILEGES;"
