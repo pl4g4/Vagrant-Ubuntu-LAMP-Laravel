@@ -1,0 +1,43 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+hostname = "localhost.dev"
+server_ip = "192.168.33.10"
+server_memory = "1024" # MB
+project_name = "laravelSetup"
+
+Vagrant.configure("2") do |config|
+
+  # Set server to Ubuntu 14.04
+  config.vm.box = "ubuntu/trusty64"
+
+  config.vm.define project_name do |v|
+  end
+
+  config.vm.hostname = hostname
+  config.vm.network :private_network, ip: server_ip
+  config.vm.network :forwarded_port, host: 8080, guest: 80
+  config.vm.provision :shell, path: "bootstrap.sh"
+
+  config.vm.synced_folder "./", "/vagrant", id: "vagrant-root" , :owner => "vagrant", :group => "www-data",  mount_options: ["dmode=775,fmode=664"]
+
+  # If using VirtualBox
+  config.vm.provider :virtualbox do |vb|
+
+    vb.name = project_name
+
+    # Set server memory
+    vb.customize ["modifyvm", :id, "--memory", server_memory]
+
+    # Set the timesync threshold to 10 seconds, instead of the default 20 minutes.
+    # If the clock gets more than 15 minutes out of sync (due to your laptop going
+    # to sleep for instance, then some 3rd party services will reject requests.
+    vb.customize ["guestproperty", "set", :id, "/VirtualBox/GuestAdd/VBoxService/--timesync-set-threshold", 10000]
+
+    # Prevent VMs running on Ubuntu to lose internet connection
+    vb.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]
+    vb.customize ["modifyvm", :id, "--natdnsproxy1", "on"]
+
+  end
+
+end
