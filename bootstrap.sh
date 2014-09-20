@@ -4,20 +4,52 @@
 #          Virtual Machine Setup
 # ---------------------------------------
 
-SERVERNAME="locahost"
-MYSQLPASSWORD="root"
+SERVERNAME="canada.dev"
 DBNAME="canada"
-DBUSER="canada"
-DBPD="canada"
+DBUSER="carcanada"
+DBPD="carcanada"
 WEBPUBLICFOLDER="/var/www/laravel/public"
- 
+
+PROXY=false
+PROXYURLHTTP="http://proxy.local:8080"
+PROXYURLHTTPS="https://proxy.local:8080"
+PROXYURLFTP="ftp://proxy.local:21"
+
+#  -----------------------
+#         Network
+#  ----------------------
+
+if $PROXY ; then
+	
+echo 'Machine offline - Setting up proxy'
+   
+#adding proxy /etc/apt/apt.conf	
+cat > /etc/apt/apt.conf << EOF
+Acquire::http::proxy "${PROXYURLHTTP}";
+Acquire::ftp::proxy "${PROXYURLFTP}";
+Acquire::https::proxy "${PROXYURLHTTPS}";
+EOF
+		
+#adding proxy /etc/environment
+cat > /etc/environment << EOF
+HTTP_PROXY="${PROXYURLHTTP}"
+HTTPS_PROXY="${PROXYURLHTTPS}"
+http_proxy="${PROXYURLHTTP}"
+https_proxy="${PROXYURLHTTPS}"
+HTTPS_PROXY_REQUEST_FULLURI=false
+EOF
+
+echo "Proxy ready"	
+fi
+
+echo "Install LAMP & Laravel"
+
 # Adding multiverse sources.
 cat > /etc/apt/sources.list.d/multiverse.list << EOF
 deb http://archive.ubuntu.com/ubuntu trusty multiverse
 deb http://archive.ubuntu.com/ubuntu trusty-updates multiverse
 deb http://security.ubuntu.com/ubuntu trusty-security multiverse
 EOF
- 
  
 # Updating packages
 apt-get update
@@ -40,7 +72,7 @@ echo "ServerName ${SERVERNAME}" > /etc/apache2/httpd.conf
 # Setup hosts file
 VHOST=$(cat <<EOF
 <VirtualHost *:80>
-  DocumentRoot "{$WEBPUBLICFOLDER}"
+  DocumentRoot "${WEBPUBLICFOLDER}"
   ServerName $SERVERNAME
   <Directory "${WEBPUBLICFOLDER}">
     Order allow,deny
@@ -96,19 +128,19 @@ service apache2 reload
 # ---------------------------------------
  
 # Setting MySQL root user password root/root
-sudo debconf-set-selections <<< "mysql-server mysql-server/root_password password ${MYSQLPASSWORD}"
-sudo debconf-set-selections <<< "mysql-server mysql-server/root_password_again password ${MYSQLPASSWORD}"
+sudo debconf-set-selections <<< "mysql-server mysql-server/root_password password root"
+sudo debconf-set-selections <<< "mysql-server mysql-server/root_password_again password root"
  
 # Installing packages
 apt-get install -y mysql-server mysql-client php5-mysql
 
-MYSQL='which mysql'
+MYSQL=`which mysql`
 
-Q1="GRANT ALL ON *.* TO 'root'@'localhost' IDENTIFIED BY '$MYSQLPASSWORD' WITH GRANT OPTION;"
+Q1="GRANT ALL ON *.* TO 'root'@'localhost' IDENTIFIED BY 'root' WITH GRANT OPTION;"
 Q2="FLUSH PRIVILEGES;"
 SQL="${Q1}${Q2}"
 
-$MYSQL -uroot -proot -e "${SQL}"
+$MYSQL -uroot -proot -e "$SQL"
 
 service mysql restart
  
@@ -131,7 +163,7 @@ ln -s /etc/phpmyadmin/apache.conf /etc/apache2/sites-enabled/phpmyadmin.conf
  
 # Restarting apache to make changes
 service apache2 restart
- 
+
 # ---------------------------------------
 #       Tools Setup
 # ---------------------------------------
@@ -147,6 +179,7 @@ apt-get install -y nano
  
 # Install Composer
 curl -s https://getcomposer.org/installer | php
+#php -r "readfile('https://getcomposer.org/installer');" | php 
  
 # Make Composer available globally
 mv composer.phar /usr/local/bin/composer
@@ -160,13 +193,31 @@ if [ ! -d "laravel" ]; then
 fi
 
 # Set up the database
-DB="create database if not exists ${DBNAME} ;GRANT ALL PRIVILEGES ON ${DBNAME}.* TO ${DBUSER}@localhost IDENTIFIED BY '${DBPD}';FLUSH PRIVILEGES;"
-$MYSQL -uroot -proot -e "${DB}"
- 
+Q1="CREATE DATABASE IF NOT EXISTS $DBNAME;"
+Q2="GRANT USAGE ON *.* TO $DBUSER@localhost IDENTIFIED BY '$DBPD';"
+Q3="GRANT ALL PRIVILEGES ON $DBNAME.* TO $DBUSER@localhost;"
+Q4="FLUSH PRIVILEGES;"
+DB="${Q1}${Q2}${Q3}${Q4}"
+
+$MYSQL -uroot -proot -e "$DB"
+
 if [ $? != "0" ]; then
- echo "[Error]: Database creation failed"
+ echo "[Error]: Installation failed"
  exit 1
 else
- echo " Database has been created successfully "
+ echo " Database has been created successfully"
 fi
 
+echo "#######################################"
+echo "#       LAMP & Laravel installed      #"
+echo "#######################################"
+echo "#                                     #"
+echo "# Settings                            #"
+echo "#                                     #"
+echo "# MYSQL user       root               #"
+echo "# MYSQL password   root               #"
+echo "# Database name:   ${DBNAME}          #"
+echo "# Database user    ${DBUSER}          #"
+echo "# Dataase password ${DBPD}            #"
+echo "# Root Folder      ${WEBPUBLICFOLDER} #"
+echo "#######################################"
