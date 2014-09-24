@@ -75,6 +75,7 @@ VHOST=$(cat <<EOF
   DocumentRoot "${WEBPUBLICFOLDER}"
   ServerName $SERVERNAME
   <Directory "${WEBPUBLICFOLDER}">
+    AllowOverride All
     Order allow,deny
     Allow from all
     Require all granted
